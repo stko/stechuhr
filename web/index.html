@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+<!--
+    <link rel="apple-touch-icon" sizes="57x57" href="/theme/default/favicon/apple-icon-57x57.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="/theme/default/favicon/apple-icon-60x60.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="/theme/default/favicon/apple-icon-72x72.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="/theme/default/favicon/apple-icon-76x76.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="/theme/default/favicon/apple-icon-114x114.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="/theme/default/favicon/apple-icon-120x120.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="/theme/default/favicon/apple-icon-144x144.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="/theme/default/favicon/apple-icon-152x152.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/theme/default/favicon/apple-icon-180x180.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/theme/default/favicon/android-icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/theme/default/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="/theme/default/favicon/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/theme/default/favicon/favicon-16x16.png">
+    <link rel="manifest" href="/theme/default/favicon/manifest.json">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="msapplication-TileImage" content="/theme/default/favicon/ms-icon-144x144.png">
+-->
+    <meta name="theme-color" content="#ffffff">
+    <meta charset="utf-8">
+    <title>Stechuhr</title>
+    <!--meta name="viewport" content="width=device-width, initial-scale=1"-->
+
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/dark-hive/jquery-ui.css">
+
+
+    <!--
+	<link rel="stylesheet" href="libs/jquery.mobile/1.4.5/jquery.mobile.structure-1.4.5.min.css" />
+	<link rel="stylesheet" href="/libs/jquery.mobile/1.4.5/jquery.mobile-1.4.5.min.css" />
+	-->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+
+
+
+    <meta content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport" />
+    <meta name="msapplication-tap-highlight" content="no" />
+    <link rel="stylesheet" type="text/css" href="style.css" />
+
+    <meta charset="utf-8">
+    <style>
+        :invalid {
+            border: 2px solid #ff0000;
+        }
+    </style>
+    <script src="main.js"></script>
+</head>
+
+<body>
+
+    <button id="indexbutton" >All Scripts</button>
+
+
+    <span id="headline"></span>
+    <div id="tabs">
+        <ul>
+            <li><a href="#datatab">Projektstunden</a></li>
+            <li><a href="#outputtab">Nur ein Platzhalter</a></li>
+        </ul>
+        <div id="datatab">
+            <div id="toolbar" class="ui-widget-header ui-corner-all">
+
+
+                <button id="dir">Define Directory</button>
+                <div id="folder_info">folder-info</div>
+                <button id="save">Save</button>
+                <button id="connect-to-serial">Connect</button><label for="connect-to-serial">Connect to a serial port</label>
+
+                <button id="button1">Clear</button>
+                <input type="checkbox" id="outputlog" checked><label for="outputlog">ein Häkchen</label>
+                <button id="outputsave" onclick="">Save</button>
+            </div>
+            <table id="files">
+            </table>
+        </div>
+        <div id="outputtab">
+
+            <textarea id="textoutput"></textarea>
+            <p />
+
+        </div>
+        <div id="dialog-modal" style="display: none;"></div>
+        <div id="input-modal" style="display:none;">
+            <div id="input-text"></div>
+            <!-- <form> -->
+            <input name="input-input" type="text" value="First name" class="text" />
+            <!-- </form> -->
+        </div>
+    </div>
+
+</body>
+
+</html>
