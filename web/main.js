@@ -81,41 +81,198 @@ $(function () { //DOM Ready
         }
     );
 
+    let directory = null // the handle for our local working directory
+    let time_records = {} // persistent data structure store all of the tick inputs
+    let time_records_file_handle = null // global file handle storage to keep the user permissions
+    let projects_template = {} // the template which defines the existing projects and to which position they belong to 
+    let last_indexed_day = 0 // used as helper flag, when the table indices have to be re-assigned to the actual tick table
+    let last_timestamp = 0
+    let year = 0
+    let month = 0
+    let day = 0
+    let TICKS_TO_DATA_STORAGE = 5
+    let ticks_to_storage_counter = 0
+
+    async function save_to_file(file_handle, content) {
+        if (directory != null) {
+            try {
+                // Creates a file
+                if (file_handle !== "undefined") {
+                    const writable = await file_handle.createWritable();
+                    await writable.write(content);
+                    await writable.close();
+                }
+            } catch (e) {
+                console.log(e);
+            }
+        }
+    }
+
+    function init_table(table_div_id, actual_year, actual_month) {
+        $(table_div_id + " table").remove()
+
+        // Create a table element
+        var table = document.createElement("table");
+
+        // Create a table row (header row)
+        var headerRow = table.insertRow();
+
+        // Create header cells
+        var cell = headerRow.insertCell();
+        cell.innerHTML = "Projekt";
+
+        cell = headerRow.insertCell();
+        cell.innerHTML = "Scheibe";
+
+        for (var i = 1; i < 32; ++i) {
+            cell = headerRow.insertCell();
+            cell.innerHTML = i;
+        }
+        // first we draw two empty rows for end and start time
+
+        // Create the first table row (header row)
+        var headerRow = table.insertRow();
+        //  2 blanks first
+        cell = headerRow.insertCell();
+        cell = headerRow.insertCell();
+
+        // now the days
+        for (var i = 1; i < 32; ++i) {
+            cell = headerRow.insertCell();
+            if (actual_year in time_records && actual_month in time_records[actual_year] && i in time_records[actual_year][actual_month]) {
+                let datetime = new Date(time_records[actual_year][actual_month][i].first_tick)
+                let mins = datetime.getMinutes()
+                if (mins < 10) {
+                    mins = "0" + mins
+                }
+                cell.innerHTML = datetime.getHours() + ":" + mins
+            }
+        }
+        // Create the second table row (header row)
+        var headerRow = table.insertRow();
+        //  2 blanks first
+        cell = headerRow.insertCell();
+        cell = headerRow.insertCell();
+
+        // now the days
+        for (var i = 1; i < 32; ++i) {
+            cell = headerRow.insertCell();
+            if (actual_year in time_records && actual_month in time_records[actual_year] && i in time_records[actual_year][actual_month]) {
+                let datetime = new Date(time_records[actual_year][actual_month][i].last_tick)
+                let mins = datetime.getMinutes()
+                if (mins < 10) {
+                    mins = "0" + mins
+                }
+                cell.innerHTML = datetime.getHours() + ":" + mins
+            }
+        }
+
+        // Create data rows
+        Object.keys(projects_template).forEach(key => {
+            console.log(key, projects_template[key]);
+            var row = table.insertRow();
+            cell = row.insertCell();
+            cell.innerHTML = key;
+            cell = row.insertCell();
+            cell.innerHTML = projects_template[key];
+            for (var i = 1; i < 32; ++i) {
+                cell = row.insertCell();
+                cell.innerHTML = i;
+            }
+        });
+
+        // Append the table to the body of the document
+        $(table_div_id).append(table);
 
 
 
 
 
-    let directory;
+
+    }
+
+    async function load_from_file(file_name) {
+        // https://developer.chrome.com/docs/capabilities/web-apis/file-system-access?hl=de#read_a_file_from_the_file_system
+        if (directory) {
+            const draftHandle = await directory.getFileHandle(file_name);
+            const fileData = await draftHandle.getFile();
+            return fileData.text();
+        } else {
+            return ""
+        }
+    }
+
+    function store_tick(position) {
+        if (last_timestamp == 0) { // the system has not set up yet
+            return
+        }
+        if (!(year in time_records)) {
+            time_records[year] = {}
+        }
+        year_record = time_records[year]
+        if (!(month in year_record)) {
+            year_record[month] = {}
+        }
+        month_record = year_record[month]
+        if (!(day in month_record)) {
+            month_record[day] = {
+                first_tick: last_timestamp,
+                last_tick: last_timestamp,
+                ticks: {}
+            }
+        }
+        day_record = month_record[day]
+        todays_ticks = day_record.ticks
+        day_record.last_tick = last_timestamp
+        if (!(position in todays_ticks)) {
+            todays_ticks[position] = 0
+        }
+        todays_ticks[position] += 1
+    }
+
+    function timer_interval() {
+        //console.log("tick")
+        // update the internal time variables
+        last_timestamp = Date.now()
+        var date = new Date(last_timestamp)
+        year = date.getFullYear();
+        month = date.getMonth() + 1; //  (note zero index: Jan = 0, Dec = 11)
+        day = date.getDate();
+        // is it time for a data backup?
+        ticks_to_storage_counter -= 1
+        if (ticks_to_storage_counter < 1) {
+            ticks_to_storage_counter = TICKS_TO_DATA_STORAGE
+            save_to_file(time_records_file_handle, JSON.stringify(time_records))
+        }
+    }
+    setInterval(timer_interval, 5000);
+
+
+
     document.getElementById('dir').addEventListener('click', async () => {
         try {
             directory = await window.showDirectoryPicker({
                 startIn: 'desktop'
             });
-
+            /*
             for await (const entry of directory.values()) {
                 let newEl = document.createElement('div');
                 newEl.innerHTML = `<strong>${entry.name}</strong> - ${entry.kind}`;
                 document.getElementById('folder_info').append(newEl);
             }
+            */
+            projects_template_string = await load_from_file("stechuhr.config")
+            projects_template = JSON.parse(projects_template_string)
+            time_records_file_handle = await directory.getFileHandle("time_records.json", { create: true });
+            time_records_input_string = await load_from_file("time_records.json")
+            time_records = JSON.parse(time_records_input_string)
+            init_table("#folder_info", year, month)
+            console.log(projects_template)
         } catch (e) {
             console.log(e);
         }
     });
 
-    document.getElementById('save').addEventListener('click', async () => {
-        try {
-            // Creates a file
-            let saveFile = await directory.getFileHandle('newFile.txt', { create: true });
-            if (saveFile !== "undefined") {
-                const writable = await saveFile.createWritable();
-                await writable.write("moin");
-                await writable.close();
-            }
-        } catch (e) {
-            console.log(e);
-        }
-    });
 
     let lineBuffer = '';
     let latestValue = 0;
@@ -151,9 +308,19 @@ $(function () { //DOM Ready
 
                 let lines = lineBuffer.split('\n');
 
-                if (lines.length > 1) {
-                    lineBuffer = lines.pop();
-                    console.log(lines.pop().trim())
+                while (lines.length > 1) {
+                    lineBuffer = ""
+                    line = lines.pop().trim();
+                    line = lines.pop().trim();
+                    console.log(line)
+                    try {
+                        wheel_data = JSON.parse(line)
+                        if (wheel_data !== undefined && wheel_data.calibrated) {
+                            store_tick(wheel_data.position)
+                        }
+                    } catch (error) {
+
+                    }
                 }
             }
         });
@@ -162,4 +329,7 @@ $(function () { //DOM Ready
             .pipeThrough(new TextDecoderStream())
             .pipeTo(appendStream);
     }
+
+
+
 });
