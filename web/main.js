@@ -5,38 +5,31 @@ $(function () { //DOM Ready
 
 
     $("#tabs").tabs();
-    $("#accordion").accordion();
     $("#indexbutton").button({
         icons: {
             primary: "ui-icon-home"
         }
     });
-    $("#button").button({
+    $("#dir").button({
         icons: {
-            primary: "ui-icon-refresh"
+            primary: "ui-icon-dir"
         }
     });
-    $("#check").button({
+    $("#connect-to-serial").button({
         icons: {
-            primary: "ui-icon-clock"
+            primary: "ui-icon-connect"
         }
     });
-    $("#outputclear").button({
-        icons: {
-            primary: "ui-icon-trash"
-        }
-    });
-    $("#outputlog").button({
+    $("#raw_ticks").button({
         icons: {
             primary: "ui-icon-pencil"
         }
     });
-    $("#outputsave").button({
+    $("#clipboard").button({
         icons: {
-            primary: "ui-icon-disk"
+            primary: "ui-icon-copy"
         }
     });
-    $("#radioset").buttonset();
     $("#dialog").dialog({
         autoOpen: false,
         width: 400,
@@ -57,17 +50,8 @@ $(function () { //DOM Ready
         $("#dialog").dialog("open");
         event.preventDefault();
     });
-    $("#datepicker").datepicker({
-        inline: true
-    });
-    $("#slider").slider({
-        range: true,
-        values: [17, 67]
-    });
-    $("#progressbar").progressbar({
-        value: 20
-    });
-    $("#spinner").spinner();
+    $("#select_year").spinner();
+    $("#select_month").spinner();
     $("#menu").menu();
     $("#tooltip").tooltip();
     $("#selectmenu").selectmenu();
@@ -86,12 +70,22 @@ $(function () { //DOM Ready
     let time_records_file_handle = null // global file handle storage to keep the user permissions
     let projects_template = {} // the template which defines the existing projects and to which position they belong to 
     let last_indexed_day = 0 // used as helper flag, when the table indices have to be re-assigned to the actual tick table
+    let table_update_references = { first_tick:null, last_tick:null, projects:[] }
     let last_timestamp = 0
     let year = 0
     let month = 0
     let day = 0
     let TICKS_TO_DATA_STORAGE = 5
     let ticks_to_storage_counter = 0
+
+    function timestamp_to_time(timestamp){
+        let datetime = new Date(timestamp)
+        let mins = datetime.getMinutes()
+        if (mins < 10) {
+            mins = "0" + mins
+        }
+        return datetime.getHours() + ":" + mins
+    }
 
     async function save_to_file(file_handle, content) {
         if (directory != null) {
@@ -113,6 +107,7 @@ $(function () { //DOM Ready
 
         // Create a table element
         var table = document.createElement("table");
+        $(table).attr("width","100%")
 
         // Create a table row (header row)
         var headerRow = table.insertRow();
@@ -140,14 +135,12 @@ $(function () { //DOM Ready
         for (var i = 1; i < 32; ++i) {
             cell = headerRow.insertCell();
             if (actual_year in time_records && actual_month in time_records[actual_year] && i in time_records[actual_year][actual_month]) {
-                let datetime = new Date(time_records[actual_year][actual_month][i].first_tick)
-                let mins = datetime.getMinutes()
-                if (mins < 10) {
-                    mins = "0" + mins
-                }
-                cell.innerHTML = datetime.getHours() + ":" + mins
+                cell.innerHTML = timestamp_to_time(time_records[actual_year][actual_month][i].first_tick)
             }
-        }
+            // lets see if the actual column is exactly today
+            if (actual_year == year && actual_month==month && i == day){
+                table_update_references.first_tick=cell
+           }        }
         // Create the second table row (header row)
         var headerRow = table.insertRow();
         //  2 blanks first
@@ -158,12 +151,11 @@ $(function () { //DOM Ready
         for (var i = 1; i < 32; ++i) {
             cell = headerRow.insertCell();
             if (actual_year in time_records && actual_month in time_records[actual_year] && i in time_records[actual_year][actual_month]) {
-                let datetime = new Date(time_records[actual_year][actual_month][i].last_tick)
-                let mins = datetime.getMinutes()
-                if (mins < 10) {
-                    mins = "0" + mins
-                }
-                cell.innerHTML = datetime.getHours() + ":" + mins
+                cell.innerHTML = timestamp_to_time(time_records[actual_year][actual_month][i].last_tick)
+            }
+            // lets see if the actual column is exactly today
+            if (actual_year == year && actual_month==month && i == day){
+                 table_update_references.last_tick=cell
             }
         }
 
@@ -178,17 +170,25 @@ $(function () { //DOM Ready
             for (var i = 1; i < 32; ++i) {
                 cell = row.insertCell();
                 cell.innerHTML = i;
+                if (actual_year == year && actual_month==month && i == day && projects_template[key]!=0){
+                    table_update_references.projects[projects_template[key]]=cell
+                }
             }
         });
 
         // Append the table to the body of the document
         $(table_div_id).append(table);
 
+    }
 
-
-
-
-
+    function update_todays_column( project, tick){
+        if (table_update_references.first_tick.innerHTML==""){
+            table_update_references.first_tick.innerHTML=timestamp_to_time(last_timestamp)
+        }
+        table_update_references.last_tick.innerHTML=timestamp_to_time(last_timestamp)
+        if (project in table_update_references.projects){
+            table_update_references.projects[project].innerHTML=tick
+        }
     }
 
     async function load_from_file(file_name) {
@@ -228,6 +228,7 @@ $(function () { //DOM Ready
             todays_ticks[position] = 0
         }
         todays_ticks[position] += 1
+        update_todays_column(position,todays_ticks[position])
     }
 
     function timer_interval() {
@@ -258,7 +259,7 @@ $(function () { //DOM Ready
             for await (const entry of directory.values()) {
                 let newEl = document.createElement('div');
                 newEl.innerHTML = `<strong>${entry.name}</strong> - ${entry.kind}`;
-                document.getElementById('folder_info').append(newEl);
+                document.getElementById('time_table').append(newEl);
             }
             */
             projects_template_string = await load_from_file("stechuhr.config")
@@ -266,7 +267,7 @@ $(function () { //DOM Ready
             time_records_file_handle = await directory.getFileHandle("time_records.json", { create: true });
             time_records_input_string = await load_from_file("time_records.json")
             time_records = JSON.parse(time_records_input_string)
-            init_table("#folder_info", year, month)
+            init_table("#time_table", year, month)
             console.log(projects_template)
         } catch (e) {
             console.log(e);
