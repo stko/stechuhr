@@ -24,6 +24,12 @@ $(function () { //DOM Ready
         icons: {
             primary: "ui-icon-pencil"
         }
+    }).change(function () {
+
+        init_table(year, month)
+        show_raw = $("#raw_ticks").is(':checked');
+        init_html_table("#time_table", year, month, show_raw)
+
     });
     $("#clipboard").button({
         icons: {
@@ -50,8 +56,8 @@ $(function () { //DOM Ready
         $("#dialog").dialog("open");
         event.preventDefault();
     });
-    $("#select_year").spinner();
-    $("#select_month").spinner();
+    $("#select_year").selectmenu();
+    $("#select_month").selectmenu();
     $("#menu").menu();
     $("#tooltip").tooltip();
     $("#selectmenu").selectmenu();
@@ -70,7 +76,8 @@ $(function () { //DOM Ready
     let time_records_file_handle = null // global file handle storage to keep the user permissions
     let projects_template = {} // the template which defines the existing projects and to which position they belong to 
     let last_indexed_day = 0 // used as helper flag, when the table indices have to be re-assigned to the actual tick table
-    let table_update_references = { first_tick:null, last_tick:null, projects:[] }
+    let table_update_references = { first_tick: null, last_tick: null, projects: [] }
+    let table_content = {}
     let last_timestamp = 0
     let year = 0
     let month = 0
@@ -78,13 +85,25 @@ $(function () { //DOM Ready
     let TICKS_TO_DATA_STORAGE = 5
     let ticks_to_storage_counter = 0
 
-    function timestamp_to_time(timestamp){
+    function timestamp_to_time(timestamp) {
         let datetime = new Date(timestamp)
         let mins = datetime.getMinutes()
         if (mins < 10) {
             mins = "0" + mins
         }
         return datetime.getHours() + ":" + mins
+    }
+
+    function minutes_to_time(minutes) {
+        hours = Math.floor(minutes / 60)
+        mins = minutes - (hours * 60)
+        if (hours < 10) {
+            hours = "0" + hours
+        }
+        if (mins < 10) {
+            mins = "0" + mins
+        }
+        return hours + ":" + mins
     }
 
     async function save_to_file(file_handle, content) {
@@ -102,12 +121,62 @@ $(function () { //DOM Ready
         }
     }
 
-    function init_table(table_div_id, actual_year, actual_month) {
+    function prepare_table_column_content(this_year, this_month, this_day, round_to_mins) {
+        /*
+            takes the given year, month and date and tries to calculate the table column data out of 
+        */
+        column_data = {
+            first_tick: { value: "", display: "", style: "" },
+            last_tick: { value: "", display: "", style: "" },
+            projects: {}
+        }
+        if (!(this_year in time_records && this_month in time_records[this_year] && this_day in time_records[this_year][this_month])) {
+            return column_data
+        }
+        this_day_data = time_records[this_year][this_month][this_day]
+        column_data.first_tick = { value: this_day_data.first_tick, display: timestamp_to_time(this_day_data.first_tick), style: "" }
+        column_data.last_tick = { value: this_day_data.last_tick, display: timestamp_to_time(this_day_data.last_tick), style: "" }
+        minutes_of_day = (this_day_data.last_tick - this_day_data.first_tick) / (60 * 1000) // make minutes out of timestamp
+
+        // round up the minutes
+
+        minutes_of_day = Math.floor((minutes_of_day + round_to_mins / 2) / round_to_mins) * round_to_mins
+
+        ticks_of_day = 0
+        Object.keys(this_day_data.ticks).forEach(key => {
+            ticks_of_day += this_day_data.ticks[key]
+        })
+        Object.keys(this_day_data.ticks).forEach(key => {
+            this_ticks = this_day_data.ticks[key]
+            this_minutes = minutes_of_day / ticks_of_day * this_ticks // first we calculate the real minutes
+            this_minutes_rounded = Math.floor((this_minutes + round_to_mins / 2) / round_to_mins) * round_to_mins
+            console.log("minutes_of_day", minutes_of_day, "ticks_of_day", ticks_of_day, "this_ticks", this_ticks, "this_minutes", this_minutes, "this_minutes_rounded", this_minutes_rounded)
+            minutes_of_day -= this_minutes_rounded
+            ticks_of_day -= this_ticks
+            column_data.projects[key] = {
+                value: this_minutes_rounded / 60,
+                ticks: this_ticks,
+                display: minutes_to_time(this_minutes_rounded),
+                style: ""
+            }
+        })
+        console.log(column_data)
+        return column_data
+    }
+
+    function init_table(actual_year, actual_month) {
+
+        for (var i = 1; i < 32; ++i) {
+            table_content[i] = prepare_table_column_content(actual_year, actual_month, i, 15)
+        }
+    }
+
+    function init_html_table(table_div_id, actual_year, actual_month, show_raw) {
         $(table_div_id + " table").remove()
 
         // Create a table element
         var table = document.createElement("table");
-        $(table).attr("width","100%")
+        $(table).attr("width", "100%")
 
         // Create a table row (header row)
         var headerRow = table.insertRow();
@@ -117,7 +186,7 @@ $(function () { //DOM Ready
         cell.innerHTML = "Projekt";
 
         cell = headerRow.insertCell();
-        cell.innerHTML = "Scheibe";
+        cell.innerHTML = "Gl&uuml;cksrad";
 
         for (var i = 1; i < 32; ++i) {
             cell = headerRow.insertCell();
@@ -134,13 +203,12 @@ $(function () { //DOM Ready
         // now the days
         for (var i = 1; i < 32; ++i) {
             cell = headerRow.insertCell();
-            if (actual_year in time_records && actual_month in time_records[actual_year] && i in time_records[actual_year][actual_month]) {
-                cell.innerHTML = timestamp_to_time(time_records[actual_year][actual_month][i].first_tick)
-            }
+            cell.innerHTML = show_raw ? table_content[i].first_tick.value : table_content[i].first_tick.display
             // lets see if the actual column is exactly today
-            if (actual_year == year && actual_month==month && i == day){
-                table_update_references.first_tick=cell
-           }        }
+            if (actual_year == year && actual_month == month && i == day) {
+                table_update_references.first_tick = cell
+            }
+        }
         // Create the second table row (header row)
         var headerRow = table.insertRow();
         //  2 blanks first
@@ -150,12 +218,10 @@ $(function () { //DOM Ready
         // now the days
         for (var i = 1; i < 32; ++i) {
             cell = headerRow.insertCell();
-            if (actual_year in time_records && actual_month in time_records[actual_year] && i in time_records[actual_year][actual_month]) {
-                cell.innerHTML = timestamp_to_time(time_records[actual_year][actual_month][i].last_tick)
-            }
+            cell.innerHTML = show_raw ? table_content[i].last_tick.value : table_content[i].last_tick.display
             // lets see if the actual column is exactly today
-            if (actual_year == year && actual_month==month && i == day){
-                 table_update_references.last_tick=cell
+            if (actual_year == year && actual_month == month && i == day) {
+                table_update_references.last_tick = cell
             }
         }
 
@@ -169,9 +235,13 @@ $(function () { //DOM Ready
             cell.innerHTML = projects_template[key];
             for (var i = 1; i < 32; ++i) {
                 cell = row.insertCell();
-                cell.innerHTML = i;
-                if (actual_year == year && actual_month==month && i == day && projects_template[key]!=0){
-                    table_update_references.projects[projects_template[key]]=cell
+                if (key in table_content[i].projects) {
+                    cell.innerHTML = show_raw ? table_content[i].projects[key].ticks : table_content[i].projects[key].display
+                } else {
+                    cell.innerHTML = ".";
+                }
+                if (actual_year == year && actual_month == month && i == day && projects_template[key] != 0) {
+                    table_update_references.projects[key] = cell
                 }
             }
         });
@@ -181,13 +251,13 @@ $(function () { //DOM Ready
 
     }
 
-    function update_todays_column( project, tick){
-        if (table_update_references.first_tick.innerHTML==""){
-            table_update_references.first_tick.innerHTML=timestamp_to_time(last_timestamp)
+    function update_todays_column(project, tick) {
+        if (table_update_references.first_tick.innerHTML == "") {
+            table_update_references.first_tick.innerHTML = timestamp_to_time(last_timestamp)
         }
-        table_update_references.last_tick.innerHTML=timestamp_to_time(last_timestamp)
-        if (project in table_update_references.projects){
-            table_update_references.projects[project].innerHTML=tick
+        table_update_references.last_tick.innerHTML = timestamp_to_time(last_timestamp)
+        if (project in table_update_references.projects) {
+            table_update_references.projects[project].innerHTML = tick
         }
     }
 
@@ -204,6 +274,19 @@ $(function () { //DOM Ready
 
     function store_tick(position) {
         if (last_timestamp == 0) { // the system has not set up yet
+            return
+        }
+        if (position == 0) {
+            project_of_position = "break"
+        } else {
+            project_of_position = 0
+            Object.keys(projects_template).forEach(key => {
+                if (projects_template[key] == position) {
+                    project_of_position = key
+                }
+            })
+        }
+        if (project_of_position === 0) { // the position does not have a project assigned
             return
         }
         if (!(year in time_records)) {
@@ -224,11 +307,11 @@ $(function () { //DOM Ready
         day_record = month_record[day]
         todays_ticks = day_record.ticks
         day_record.last_tick = last_timestamp
-        if (!(position in todays_ticks)) {
-            todays_ticks[position] = 0
+        if (!(project_of_position in todays_ticks)) {
+            todays_ticks[project_of_position] = 0
         }
-        todays_ticks[position] += 1
-        update_todays_column(position,todays_ticks[position])
+        todays_ticks[project_of_position] += 1
+        update_todays_column(project_of_position, todays_ticks[project_of_position])
     }
 
     function timer_interval() {
@@ -267,7 +350,9 @@ $(function () { //DOM Ready
             time_records_file_handle = await directory.getFileHandle("time_records.json", { create: true });
             time_records_input_string = await load_from_file("time_records.json")
             time_records = JSON.parse(time_records_input_string)
-            init_table("#time_table", year, month)
+            init_table(year, month)
+            show_raw = $("#raw_ticks").is(':checked');
+            init_html_table("#time_table", year, month, show_raw)
             console.log(projects_template)
         } catch (e) {
             console.log(e);
@@ -316,7 +401,7 @@ $(function () { //DOM Ready
                     console.log(line)
                     try {
                         wheel_data = JSON.parse(line)
-                        if (wheel_data !== undefined && wheel_data.calibrated) {
+                        if (wheel_data !== undefined && wheel_data.calibrated && !wheel_data.turning) {
                             store_tick(wheel_data.position)
                         }
                     } catch (error) {

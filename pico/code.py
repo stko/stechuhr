@@ -35,16 +35,18 @@ BUTTON_LONG_PRESS_TICKS = (
 )
 
 
-def report_state():
+def report_state(turning):
     global calibrated, in_calibration_mode, start_calibration_mode, button_state, calibrated_position
     print(
         json.dumps(
             {
-                "calibrated": calibrated > 1
+                "calibrated": abs(calibrated) > 1
                 and not in_calibration_mode
                 and not start_calibration_mode,
                 "button": button_state,
-                "position": calibrated_position,
+                "position": abs(calibrated_position),
+                "positions": abs(calibrated),
+                "turning": turning,
             }
         )
     )
@@ -60,7 +62,7 @@ while True:
         if button_press_ticks == BUTTON_LONG_PRESS_TICKS:  # calibration request
             calibrated = 1
             start_calibration_mode = True
-            #print("init calibration")
+            # print("init calibration")
             calibration_start_pos = position
         # do we just finish a calibration mode?
         if in_calibration_mode:
@@ -69,11 +71,11 @@ while True:
                 calibration_start_pos - position
             )  # number of steps for one complete turn
             calibrated_zero_pos = position
-            #print("end calibration", calibrated)
+            # print("end calibration", calibrated)
     else:
         # are we just had a calibration request with a pressed button?
         if start_calibration_mode:
-            #print("begin calibration")
+            # print("begin calibration")
             start_calibration_mode = False  # button is released
             in_calibration_mode = True
             calibration_start_pos = position
@@ -81,16 +83,16 @@ while True:
     position = enc.position
     if position != last_position or last_button_state != button_state:
         calibrated_position = (position - calibrated_zero_pos) % calibrated
-        report_state()
+        report_state(position != last_position)
         report_tick_counter = REPORT_TICKS
     report_tick_counter -= 1
     if report_tick_counter < 1:  # it's time for a report
-        report_state()
+        report_state(False)
         report_tick_counter = REPORT_TICKS
     last_position = position
     last_button_state = button_state
     # and finally we control the led
-    if calibrated > 1 and not in_calibration_mode and not start_calibration_mode:
+    if abs(calibrated) > 1 and not in_calibration_mode and not start_calibration_mode:
         led.value = True
     else:
         led_dark_time -= 1
