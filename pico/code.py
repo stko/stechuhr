@@ -5,10 +5,16 @@ import json
 from digitalio import DigitalInOut, Direction, Pull
 
 # setup the hardware
-switchPin = DigitalInOut(board.GP10)
+# little hack: By supporting the switch with 3.3V via the output pin GP10,
+# we can solder the rotary encoder straight to the continius pins from GND to GP13
+# which makes the assembly easier
+switchPower = DigitalInOut(board.GP10)
+switchPower.direction = Direction.OUTPUT
+switchPower.value = True
+switchPin = DigitalInOut(board.GP11)
 switchPin.direction = Direction.INPUT
 switchPin.pull = Pull.DOWN
-enc = rotaryio.IncrementalEncoder(board.GP11, board.GP12)
+enc = rotaryio.IncrementalEncoder(board.GP12, board.GP13)
 led = DigitalInOut(board.LED)
 led.direction = Direction.OUTPUT
 
