@@ -4,6 +4,22 @@ $(function () { //DOM Ready
     //define here what to do if a text comes in to be shown
 
 
+    let directory = null // the handle for our local working directory
+    let time_records = {} // persistent data structure store all of the tick inputs
+    let time_records_file_handle = null // global file handle storage to keep the user permissions
+    let projects_template = {} // the template which defines the existing projects and to which position they belong to 
+    let last_indexed_day = 0 // used as helper flag, when the table indices have to be re-assigned to the actual tick table
+    let table_update_references = { first_tick: null, last_tick: null, projects: [] }
+    let table_content = {}
+    let last_timestamp = 0
+    let year = 0
+    let month = 0
+    let day = 0
+    let selected_year = 0
+    let selected_month = 0
+    let TICKS_TO_DATA_STORAGE = 5
+    let ticks_to_storage_counter = 0
+
     $("#tabs").tabs();
     $("#indexbutton").button({
         icons: {
@@ -25,11 +41,7 @@ $(function () { //DOM Ready
             primary: "ui-icon-pencil"
         }
     }).change(function () {
-
-        init_table(year, month)
-        show_raw = $("#raw_ticks").is(':checked');
-        init_html_table("#time_table", year, month, show_raw)
-
+        refresh_table()
     });
     $("#clipboard").button({
         icons: {
@@ -56,8 +68,15 @@ $(function () { //DOM Ready
         $("#dialog").dialog("open");
         event.preventDefault();
     });
-    $("#select_year").selectmenu();
-    $("#select_month").selectmenu();
+    $("#select_year").selectmenu().on('selectmenuchange', function () {
+        selected_year = $("#select_year").val()
+        fill_selectors()
+        refresh_table()
+    });
+    $("#select_month").selectmenu().on('selectmenuchange', function () {
+        selected_month = $("#select_month").val()
+        refresh_table()
+    });
     $("#menu").menu();
     $("#tooltip").tooltip();
     $("#selectmenu").selectmenu();
@@ -71,19 +90,6 @@ $(function () { //DOM Ready
         }
     );
 
-    let directory = null // the handle for our local working directory
-    let time_records = {} // persistent data structure store all of the tick inputs
-    let time_records_file_handle = null // global file handle storage to keep the user permissions
-    let projects_template = {} // the template which defines the existing projects and to which position they belong to 
-    let last_indexed_day = 0 // used as helper flag, when the table indices have to be re-assigned to the actual tick table
-    let table_update_references = { first_tick: null, last_tick: null, projects: [] }
-    let table_content = {}
-    let last_timestamp = 0
-    let year = 0
-    let month = 0
-    let day = 0
-    let TICKS_TO_DATA_STORAGE = 5
-    let ticks_to_storage_counter = 0
 
     function timestamp_to_time(timestamp) {
         let datetime = new Date(timestamp)
@@ -119,6 +125,32 @@ $(function () { //DOM Ready
                 console.log(e);
             }
         }
+    }
+
+    function fill_selectors() {
+        $("#select_year" + " option").remove()
+        $("#select_month" + " option").remove()
+        Object.keys(time_records).forEach(key => {
+            $("#select_year").append($("<option>")
+                .val(key)
+                .html(key)
+            );
+        })
+        if (!(selected_year in time_records) && Object.keys(time_records).length > 0) {
+            selected_year = Object.keys(time_records)[0]
+        }
+        $('#select_year').val(selected_year).selectmenu("refresh");
+        months = time_records[selected_year]
+        Object.keys(months).forEach(key => {
+            $("#select_month").append($("<option>")
+                .val(key)
+                .html(key)
+            );
+        })
+        if (!(selected_month in months) && Object.keys(months).length > 0) {
+            selected_month = Object.keys(months)[0]
+        }
+        $('#select_month').val(selected_month).selectmenu("refresh");
     }
 
     function prepare_table_column_content(this_year, this_month, this_day, round_to_mins) {
@@ -162,6 +194,12 @@ $(function () { //DOM Ready
         })
         console.log(column_data)
         return column_data
+    }
+
+    function refresh_table() {
+        init_table(selected_year, selected_month)
+        show_raw = $("#raw_ticks").is(':checked');
+        init_html_table("#time_table", selected_year, selected_month, show_raw)
     }
 
     function init_table(actual_year, actual_month) {
@@ -321,6 +359,10 @@ $(function () { //DOM Ready
         var date = new Date(last_timestamp)
         year = date.getFullYear();
         month = date.getMonth() + 1; //  (note zero index: Jan = 0, Dec = 11)
+        if (selected_year == 0) {
+            selected_year = year
+            selected_month = month
+        }
         day = date.getDate();
         // is it time for a data backup?
         ticks_to_storage_counter -= 1
@@ -350,9 +392,8 @@ $(function () { //DOM Ready
             time_records_file_handle = await directory.getFileHandle("time_records.json", { create: true });
             time_records_input_string = await load_from_file("time_records.json")
             time_records = JSON.parse(time_records_input_string)
-            init_table(year, month)
-            show_raw = $("#raw_ticks").is(':checked');
-            init_html_table("#time_table", year, month, show_raw)
+            fill_selectors()
+            refresh_table()
             console.log(projects_template)
         } catch (e) {
             console.log(e);

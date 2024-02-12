@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-<!--
+    <!--
     <link rel="apple-touch-icon" sizes="57x57" href="/theme/default/favicon/apple-icon-57x57.png">
     <link rel="apple-touch-icon" sizes="60x60" href="/theme/default/favicon/apple-icon-60x60.png">
     <link rel="apple-touch-icon" sizes="72x72" href="/theme/default/favicon/apple-icon-72x72.png">
@@ -53,7 +53,7 @@
 
 <body>
 
-    <button id="indexbutton" ></button>
+    <button id="indexbutton"></button>
 
 
     <span id="headline">Stechuhr</span>
@@ -67,7 +67,12 @@
 
 
                 <button id="dir">Open Local Directory</button>
-                <button id="select_year">Save</button>
+                <label for="select_year">Jahr:</label>
+                <select name="select_year" id="select_year">
+                </select>
+                <label for="select_month">Monat:</label>
+                <select name="select_month" id="select_month">
+                </select>
                 <button id="connect-to-serial">Connect to Wheel of Fortune</button>
                 <div id="time_table"></div>
                 <input type="checkbox" id="raw_ticks" checked><label for="raw_ticks">Raw Tick Output</label>
