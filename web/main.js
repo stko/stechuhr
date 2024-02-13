@@ -12,6 +12,7 @@ $(function () { //DOM Ready
     let table_update_references = { first_tick: null, last_tick: null, projects: [] }
     let table_content = {}
     let last_timestamp = 0
+    let show_raw = false // shows raw tick values in table if true
     let year = 0
     let month = 0
     let day = 0
@@ -47,6 +48,8 @@ $(function () { //DOM Ready
         icons: {
             primary: "ui-icon-copy"
         }
+    }).click(function (event) {
+        copy_to_clipboard()
     });
     $("#dialog").dialog({
         autoOpen: false,
@@ -127,7 +130,57 @@ $(function () { //DOM Ready
         }
     }
 
+    function copy_to_clipboard() {
+        //  2 blanks first
+        result = "\t"
+        // now the days
+        for (var i = 1; i < 32; ++i) {
+            result += "\t" + i
+        }
+        result += "\n" // new line
+
+        /*
+        // Create the next table row (first tick)
+        //  2 blanks first
+        result ="\t"
+
+        // now the days
+        for (var i = 1; i < 32; ++i) {
+            result += "\t" + show_raw ? table_content[i].first_tick.value : table_content[i].first_tick.display
+        }
+
+
+        // Create the next table row (first tick)
+        //  2 blanks first
+        result ="\t"
+
+        // now the days
+        for (var i = 1; i < 32; ++i) {
+            result += "\t" + show_raw ? table_content[i].last_tick.value : table_content[i].last_tick.display
+        }
+        */
+
+        // Create data rows
+        Object.keys(projects_template).forEach(key => {
+            result += key;
+            result += projects_template[key];
+            for (var i = 1; i < 32; ++i) {
+                if (key in table_content[i].projects) {
+                    result += "\t" + (show_raw ? table_content[i].projects[key].ticks : table_content[i].projects[key].value.replace(".",","))
+                } else {
+                    result += "\t";
+                }
+            }
+            result += "\n" // new line
+        });
+
+        // copy to clipboard
+        console.log(result)
+    }
+
+
     function fill_selectors() {
+
         $("#select_year" + " option").remove()
         $("#select_month" + " option").remove()
         Object.keys(time_records).forEach(key => {
