@@ -13,9 +13,14 @@ body {
     }
     
     .highlight {
-        color : red;
+        color : rgb(194, 231, 126);
+        background-color: #1798cb;
     }
-    
+
+    :invalid {
+        border: 2px solid #ff0000;
+    }
+
     textarea{
         border-radius:5px;
         -moz-border-radius:5px;
