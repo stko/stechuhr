@@ -8,7 +8,8 @@ $(function () { //DOM Ready
     let time_records = {} // persistent data structure store all of the tick inputs
     let time_records_file_handle = null // global file handle storage to keep the user permissions
     let projects_template = {} // the template which defines the existing projects and to which position they belong to 
-    let last_indexed_day = 0 // used as helper flag, when the table indices have to be re-assigned to the actual tick table
+    let last_selected_row = 0 // which was the last project which was highlighted in the table
+    let position_table_rows ={} // stores the table row for each project for highlighting
     let table_update_references = { first_tick: null, last_tick: null, projects: [] }
     let table_content = {}
     let last_timestamp = 0
@@ -166,7 +167,7 @@ $(function () { //DOM Ready
             result += projects_template[key];
             for (var i = 1; i < 32; ++i) {
                 if (key in table_content[i].projects) {
-                    result += "\t" + (show_raw ? table_content[i].projects[key].ticks : table_content[i].projects[key].value.toString().replace(".",","))
+                    result += "\t" + (show_raw ? table_content[i].projects[key].ticks : table_content[i].projects[key].value.toString().replace(".", ","))
                 } else {
                     result += "\t";
                 }
@@ -236,7 +237,7 @@ $(function () { //DOM Ready
             this_ticks = this_day_data.ticks[key]
             this_minutes = minutes_of_day / ticks_of_day * this_ticks // first we calculate the real minutes
             this_minutes_rounded = Math.floor((this_minutes + round_to_mins / 2) / round_to_mins) * round_to_mins
-            console.log("minutes_of_day", minutes_of_day, "ticks_of_day", ticks_of_day, "this_ticks", this_ticks, "this_minutes", this_minutes, "this_minutes_rounded", this_minutes_rounded)
+            //console.log("minutes_of_day", minutes_of_day, "ticks_of_day", ticks_of_day, "this_ticks", this_ticks, "this_minutes", this_minutes, "this_minutes_rounded", this_minutes_rounded)
             minutes_of_day -= this_minutes_rounded
             ticks_of_day -= this_ticks
             column_data.projects[key] = {
@@ -246,7 +247,7 @@ $(function () { //DOM Ready
                 style: ""
             }
         })
-        console.log(column_data)
+        //console.log(column_data)
         return column_data
     }
 
@@ -319,12 +320,15 @@ $(function () { //DOM Ready
 
         // Create data rows
         Object.keys(projects_template).forEach(key => {
-            console.log(key, projects_template[key]);
+            //console.log(key, projects_template[key]);
             var row = table.insertRow();
             cell = row.insertCell();
             cell.innerHTML = key;
             cell = row.insertCell();
             cell.innerHTML = projects_template[key];
+            if (projects_template[key] != 0){ // store the row by project id (key) for highlighing
+                position_table_rows[projects_template[key]]=row
+            }
             for (var i = 1; i < 32; ++i) {
                 cell = row.insertCell();
                 if (key in table_content[i].projects) {
@@ -405,6 +409,21 @@ $(function () { //DOM Ready
         todays_ticks[project_of_position] += 1
         update_todays_column(project_of_position, todays_ticks[project_of_position])
     }
+
+    function highlight_row(position) {
+        if (last_selected_row != position) {
+            if (last_selected_row in position_table_rows) {
+                // un-highlight last row
+                $(position_table_rows[last_selected_row]).removeClass("highlight");
+            }
+            last_selected_row = position
+            if (position != 0 && position in position_table_rows) {
+                // highlight table row
+                $(position_table_rows[position]).addClass("highlight");
+            }
+        }
+    }
+
 
     function timer_interval() {
         //console.log("tick")
@@ -496,8 +515,11 @@ $(function () { //DOM Ready
                     console.log(line)
                     try {
                         wheel_data = JSON.parse(line)
-                        if (wheel_data !== undefined && wheel_data.calibrated && !wheel_data.turning) {
-                            store_tick(wheel_data.position)
+                        if (wheel_data !== undefined && wheel_data.calibrated) {
+                            if (!wheel_data.turning) {
+                                store_tick(wheel_data.position)
+                            }
+                            highlight_row(wheel_data.position)
                         }
                     } catch (error) {
 
