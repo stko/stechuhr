@@ -162,9 +162,9 @@ $(function () { //DOM Ready
         */
 
         // Create data rows
-        Object.keys(projects_template).forEach(key => {
+        Object.keys(projects_template.projects).forEach(key => {
             result += key;
-            result += projects_template[key];
+            result += projects_template.projects[key];
             for (var i = 1; i < 32; ++i) {
                 if (key in table_content[i].projects) {
                     result += "\t" + (show_raw ? table_content[i].projects[key].ticks : table_content[i].projects[key].value.toString().replace(".", ","))
@@ -224,6 +224,22 @@ $(function () { //DOM Ready
         column_data.first_tick = { value: this_day_data.first_tick, display: timestamp_to_time(this_day_data.first_tick), style: "" }
         column_data.last_tick = { value: this_day_data.last_tick, display: timestamp_to_time(this_day_data.last_tick), style: "" }
         minutes_of_day = (this_day_data.last_tick - this_day_data.first_tick) / (60 * 1000) // make minutes out of timestamp
+        // substract the break times out of the total minutes
+
+        
+        var keys = Object.keys(projects_template.breaks); // or loop over the object to get the array
+        // keys will be in any order
+        keys.sort().reverse(); // maybe use custom sort, to change direction use .reverse()
+        // keys now will be in wanted order
+        
+        for (var i=0; i<keys.length; i++) { // now lets iterate in sort order
+            var key = keys[i];
+            var value = projects_template.breaks[key];
+            if (minutes_of_day > key){
+                minutes_of_day -=value
+                break
+            }
+        } 
 
         // round up the minutes
 
@@ -319,15 +335,15 @@ $(function () { //DOM Ready
         }
 
         // Create data rows
-        Object.keys(projects_template).forEach(key => {
-            //console.log(key, projects_template[key]);
+        Object.keys(projects_template.projects).forEach(key => {
+            //console.log(key, projects_template.projects[key]);
             var row = table.insertRow();
             cell = row.insertCell();
             cell.innerHTML = key;
             cell = row.insertCell();
-            cell.innerHTML = projects_template[key];
-            if (projects_template[key] != 0){ // store the row by project id (key) for highlighing
-                position_table_rows[projects_template[key]]=row
+            cell.innerHTML = projects_template.projects[key];
+            if (projects_template.projects[key] != 0){ // store the row by project id (key) for highlighing
+                position_table_rows[projects_template.projects[key]]=row
             }
             for (var i = 1; i < 32; ++i) {
                 cell = row.insertCell();
@@ -336,7 +352,7 @@ $(function () { //DOM Ready
                 } else {
                     cell.innerHTML = ".";
                 }
-                if (actual_year == year && actual_month == month && i == day && projects_template[key] != 0) {
+                if (actual_year == year && actual_month == month && i == day && projects_template.projects[key] != 0) {
                     table_update_references.projects[key] = cell
                 }
             }
@@ -376,8 +392,8 @@ $(function () { //DOM Ready
             project_of_position = "break"
         } else {
             project_of_position = 0
-            Object.keys(projects_template).forEach(key => {
-                if (projects_template[key] == position) {
+            Object.keys(projects_template.projects).forEach(key => {
+                if (projects_template.projects[key] == position) {
                     project_of_position = key
                 }
             })
