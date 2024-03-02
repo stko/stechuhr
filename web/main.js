@@ -164,7 +164,7 @@ $(function () { //DOM Ready
         // Create data rows
         Object.keys(projects_template.projects).forEach(key => {
             result += key;
-            result += projects_template.projects[key];
+            result += "\t" + projects_template.projects[key];
             for (var i = 1; i < 32; ++i) {
                 if (key in table_content[i].projects) {
                     result += "\t" + (show_raw ? table_content[i].projects[key].ticks : table_content[i].projects[key].value.toString().replace(".", ","))
