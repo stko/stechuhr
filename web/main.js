@@ -467,7 +467,7 @@ $(function () { //DOM Ready
     document.getElementById('dir').addEventListener('click', async () => {
         try {
             directory = await window.showDirectoryPicker({
-                startIn: 'desktop'
+                startIn: 'documents'
             });
             /*
             for await (const entry of directory.values()) {
